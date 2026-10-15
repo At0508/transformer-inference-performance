@@ -12,6 +12,10 @@ class CostModelTests(unittest.TestCase):
         # A single final vocabulary projection uses 2,048 FLOPs per position.
         self.assertEqual(result.prefill_flops, 43008)
         self.assertEqual(result.decode_flops, 21888)
+        last_only = estimate(shape, batch_size=1, prompt_tokens=4,
+                             generated_tokens=2, prefill_logits_all_tokens=False)
+        self.assertEqual(last_only.prefill_flops, 36864)
+        self.assertEqual(last_only.prefill_logits_positions, 1)
         no_decode = estimate(shape, batch_size=1, prompt_tokens=4, generated_tokens=0)
         self.assertEqual(no_decode.decode_flops, 0)
         self.assertEqual(no_decode.kv_cache_bytes_at_end, 2 * 2 * 4 * 16 * 2)

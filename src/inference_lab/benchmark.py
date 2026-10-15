@@ -70,7 +70,7 @@ def generate_uncached(model: TinyDecoder, prompt: torch.Tensor,
     next_token = first_token
     for _ in range(decode_steps):
         prefix = torch.cat((prefix, next_token.unsqueeze(1)), dim=1)
-        logits, _ = model.prefill(prefix)
+        logits, _ = model.prefill(prefix, last_token_only=True)
         next_token = logits[:, -1].argmax(dim=-1)
         generated.append(next_token)
     return torch.stack(generated, dim=1)
@@ -85,7 +85,7 @@ def _benchmark_case(model: TinyDecoder, device: torch.device,
         torch.cuda.reset_peak_memory_stats(device)
     decode_steps = output_tokens - 1
     with torch.inference_mode():
-        prompt_logits, base_cache = model.prefill(tokens)
+        prompt_logits, base_cache = model.prefill(tokens, last_token_only=True)
         first_token = prompt_logits[:, -1].argmax(dim=-1)
         cached = lambda: generate_cached(model, first_token, base_cache, decode_steps)
         uncached = lambda: generate_uncached(model, tokens, first_token, decode_steps)
@@ -94,13 +94,13 @@ def _benchmark_case(model: TinyDecoder, device: torch.device,
         actual_kv_bytes = sum(k.numel() * k.element_size() + v.numel() * v.element_size()
                               for k, v in base_cache)
         for _ in range(warmup):
-            model.prefill(tokens)
+            model.prefill(tokens, last_token_only=True)
             cached()
             uncached()
         _sync(device)
 
         prefill_ms, prefill_samples = _measure(
-            lambda: model.prefill(tokens), repetitions, device
+            lambda: model.prefill(tokens, last_token_only=True), repetitions, device
         )
 
         # Alternate measurement order to reduce systematic thermal/order bias.
@@ -122,13 +122,15 @@ def _benchmark_case(model: TinyDecoder, device: torch.device,
     )
     estimate_row = estimate(shape, batch_size=batch, prompt_tokens=context,
                             generated_tokens=decode_steps,
-                            bytes_per_element=bytes_per_element)
+                            bytes_per_element=bytes_per_element,
+                            prefill_logits_all_tokens=False)
     return {
         "batch_size": batch,
         "context_tokens": context,
         "generated_tokens": output_tokens,
         "decode_steps_after_first_token": decode_steps,
         "greedy_outputs_match": True,
+        "vocabulary_projection": "last token only in both modes",
         "prefill_ms_median": prefill_ms,
         "prefill_ms_samples": prefill_samples,
         "ttft_ms_model_only": prefill_ms,

@@ -56,6 +56,7 @@ class Estimate:
     weight_bytes: int
     kv_cache_bytes_at_end: int
     prefill_flops: int
+    prefill_logits_positions: int
     decode_flops: int
     decode_kv_read_bytes: int
     ideal_prefill_ms: float | None
@@ -69,6 +70,7 @@ def estimate(
     prompt_tokens: int,
     generated_tokens: int,
     bytes_per_element: int = 2,
+    prefill_logits_all_tokens: bool = True,
     peak_flops_per_second: float | None = None,
     memory_bandwidth_bytes_per_second: float | None = None,
 ) -> Estimate:
@@ -94,10 +96,11 @@ def estimate(
     kv_width = kvh * head_dim
     linear_flops_per_token_per_layer = 4 * d * d + 4 * d * kv_width + 4 * d * f
     output_projection_flops_per_token = 2 * d * shape.vocabulary_size
+    prefill_logits_positions = prompt_tokens if prefill_logits_all_tokens else 1
     prefill_flops = batch_size * (
         layers * (prompt_tokens * linear_flops_per_token_per_layer
                   + 4 * prompt_tokens * prompt_tokens * d)
-        + prompt_tokens * output_projection_flops_per_token
+        + prefill_logits_positions * output_projection_flops_per_token
     )
     # Sum attention work as the cache grows token by token. This excludes the
     # small one-token causal-mask and sampling costs.
@@ -135,7 +138,8 @@ def estimate(
         prompt_tokens=prompt_tokens, generated_tokens=generated_tokens,
         bytes_per_element=bytes_per_element, parameter_count=parameter_count,
         weight_bytes=weight_bytes, kv_cache_bytes_at_end=kv_cache_bytes,
-        prefill_flops=prefill_flops, decode_flops=decode_flops,
+        prefill_flops=prefill_flops, prefill_logits_positions=prefill_logits_positions,
+        decode_flops=decode_flops,
         decode_kv_read_bytes=decode_kv_read_bytes,
         ideal_prefill_ms=ideal_prefill_ms, ideal_decode_ms=ideal_decode_ms,
     )

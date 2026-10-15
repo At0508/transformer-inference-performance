@@ -84,7 +84,7 @@ class TinyDecoder(nn.Module):
         self.output = nn.Linear(hidden_size, vocabulary_size, bias=False)
         self.output.weight = self.embedding.weight
 
-    def prefill(self, token_ids: torch.Tensor
+    def prefill(self, token_ids: torch.Tensor, *, last_token_only: bool = False
                 ) -> tuple[torch.Tensor, list[tuple[torch.Tensor, torch.Tensor]]]:
         if token_ids.ndim != 2 or token_ids.shape[1] == 0:
             raise ValueError("token_ids must have shape [batch, nonzero sequence]")
@@ -96,7 +96,10 @@ class TinyDecoder(nn.Module):
         for block in self.blocks:
             x, layer_cache = block.prefill(x)
             cache.append(layer_cache)
-        return self.output(self.final_norm(x)), cache
+        # Generation needs only the final position's vocabulary projection.
+        # Keep all positions available for cache/logit equivalence checks.
+        output_states = x[:, -1:] if last_token_only else x
+        return self.output(self.final_norm(output_states)), cache
 
     def decode_step(self, token_ids: torch.Tensor,
                     cache: list[tuple[torch.Tensor, torch.Tensor]]

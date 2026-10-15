@@ -36,6 +36,8 @@ Use `--device cuda --dtype fp16` or `bf16` to run supported GPU precision experi
 
 `decode_tokens_per_second` aggregates tokens across the batch: `batch × decode_steps / elapsed_seconds`. It includes the Python loop, model calls, KV-cache concatenation, and argmax selection. This implementation copies cache tensors as they grow; it is not a preallocated production cache. CPU measurements use one PyTorch thread by default; change `--threads` explicitly and record the setting. This small benchmark is useful for controlled comparisons, not production serving claims.
 
+Both modes project only the final position to vocabulary logits. The uncached baseline therefore repeats attention and decoder work, but does not waste time projecting logits for every prefix position. The model's default full-position logits remain available for numerical equivalence tests.
+
 For a system trace on an NVIDIA machine:
 
 ```bash

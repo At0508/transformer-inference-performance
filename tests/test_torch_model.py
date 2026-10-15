@@ -21,6 +21,9 @@ class CacheEquivalenceTests(unittest.TestCase):
         self.assertEqual(shape.parameter_count, sum(p.numel() for p in model.parameters()))
         tokens = torch.randint(0, 64, (2, 7))
         with torch.inference_mode():
+            full_positions, _ = model.prefill(tokens)
+            last_position, _ = model.prefill(tokens, last_token_only=True)
+            torch.testing.assert_close(last_position, full_positions[:, -1:], atol=1e-5, rtol=1e-5)
             _, cache = model.prefill(tokens[:, :3])
             for position in range(3, 7):
                 incremental, cache = model.decode_step(tokens[:, position], cache)
