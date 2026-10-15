@@ -65,7 +65,13 @@ CUDA peak allocated/reserved memory, when available, covers the entire case: cor
 
 ## Validation and limits
 
-The checks compare cached and full-prefix logits across several decode steps and two sequences, verify tied parameter counts against PyTorch, and check batch throughput accounting. Cost-model checks validate hand-calculated FLOPs, KV scaling and input handling. GitHub Actions runs CPU PyTorch tests and publishes a CPU benchmark artifact. Run on an NVIDIA GPU before making GPU performance claims. No production-model accuracy or GPU timing is included in the source repository.
+The checks compare cached and full-prefix logits across several decode steps and two sequences, verify tied parameter counts against PyTorch, and check batch throughput accounting. Cost-model checks validate hand-calculated FLOPs, KV scaling and input handling. GitHub Actions runs CPU PyTorch tests and publishes a CPU benchmark artifact. Recorded GPU measurements are linked below; no production-model accuracy claim is made.
+
+## Recorded GPU results
+
+On a Tesla T4 in Colab, FP32 KV caching improved decode by **1.30–1.40×** across batches 1–2 and prompts of 32–128 tokens. All four generated-output comparisons and six unit tests passed. The benchmark used three warmups and nine repetitions per case. This small model includes Python/framework overhead; the result is specific to the recorded configuration.
+
+See the [GPU report and reproduction command](docs/results/t4_inference_2026-10-15.md) and [all raw samples](docs/results/t4_inference_2026-10-15.json).
 
 ## Recorded CPU results
 
