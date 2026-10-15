@@ -13,8 +13,12 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install CPU PyTorch
-        run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+        run: python -m pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
       - name: Run cost and KV-cache checks
         run: PYTHONPATH=src python -m unittest discover -s tests -v
-      - name: Smoke benchmark on CPU
-        run: PYTHONPATH=src python -m inference_lab.benchmark --device cpu --context-lengths 8 --output-tokens 4 --warmup 1 --repetitions 2 --max-sequence-length 32 --output results/ci.json
+      - name: Compare cached and uncached decoding on CPU
+        run: PYTHONPATH=src python -m inference_lab.benchmark --device cpu --threads 1 --batch-sizes 1,2 --context-lengths 32,128 --output-tokens 16 --warmup 3 --repetitions 9 --output results/ci.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpu-inference-results
+          path: results/ci.json

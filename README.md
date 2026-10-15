@@ -32,7 +32,9 @@ python -m inference_lab.benchmark --device auto \
 
 Use `--device cuda --dtype fp16` or `bf16` to run supported GPU precision experiments. The benchmark checks for a CUDA device and refuses an unavailable CUDA request. Use the same model dimensions, driver, PyTorch build, GPU, and run procedure when comparing cases. Run one variable sweep at a time and retain the generated JSON with the exact command.
 
-`ttft_ms_model_only` is the measured prompt prefill time through the model's output logits. It excludes tokenization, request handling, and queueing. Decode throughput includes the Python loop, model calls, and on-device argmax selection, but excludes host-side token transfer. This small benchmark is useful for controlled comparisons, not production serving claims.
+`ttft_ms_model_only` is the measured prompt prefill time through the model's output logits. It excludes tokenization, request handling, and queueing. The first output token comes from those logits. `--output-tokens 16` then measures 15 incremental decode steps, excluding the prompt forward. Cached and uncached modes produce the same greedy output; the baseline recomputes the complete prefix at every step. Measurement order alternates between modes, and raw samples are retained.
+
+`decode_tokens_per_second` aggregates tokens across the batch: `batch × decode_steps / elapsed_seconds`. It includes the Python loop, model calls, KV-cache concatenation, and argmax selection. This implementation copies cache tensors as they grow; it is not a preallocated production cache. CPU measurements use one PyTorch thread by default; change `--threads` explicitly and record the setting. This small benchmark is useful for controlled comparisons, not production serving claims.
 
 For a system trace on an NVIDIA machine:
 
@@ -55,11 +57,11 @@ Run its checks with:
 python -m unittest discover -s tests -v
 ```
 
-The optional roofline estimate is a lower bound under simplified assumptions. It omits launch overhead, cache residency, allocator padding, scheduling, and framework kernels. Compare it against GPU observations; do not describe the estimate itself as a measured latency.
+The optional roofline estimate is a lower bound under simplified assumptions. It omits launch overhead, cache residency, allocator padding, scheduling, and framework kernels. The analytical API's `generated_tokens` counts decode forwards following prefill; the benchmark passes `output_tokens - 1`. The vocabulary projection is counted once after the decoder stack. Grouped-query attention dimensions are supported by the analytical model; the runnable PyTorch model uses standard multi-head attention. Compare estimates against observations; do not describe an estimate itself as measured latency.
 
 ## Validation and limits
 
-The cache-equivalence check compares full causal prefill with prefill plus one incremental decode step. The cost-model checks validate KV scaling and input handling. The CUDA benchmark should be run on an NVIDIA GPU before making GPU performance claims. No production-model accuracy, model-serving throughput, or GPU timing is included in the source repository.
+The checks compare cached and full-prefix logits across several decode steps and two sequences, verify tied parameter counts against PyTorch, and check batch throughput accounting. Cost-model checks validate hand-calculated FLOPs, KV scaling and input handling. GitHub Actions runs CPU PyTorch tests and publishes a CPU benchmark artifact. Run on an NVIDIA GPU before making GPU performance claims. No production-model accuracy or GPU timing is included in the source repository.
 
 ## License
 

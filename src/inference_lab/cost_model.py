@@ -76,10 +76,12 @@ def estimate(
 
     The model assumes dense projections, standard attention, tied input/output
     embeddings, and a KV cache. It excludes framework, allocator, padding,
-    launch, host, and communication overheads.
+    launch, host, and communication overheads. ``generated_tokens`` counts
+    incremental decode forwards after prefill; prefill already supplies logits
+    for the first output token. Zero decode forwards are supported.
     """
-    if min(batch_size, prompt_tokens, generated_tokens, bytes_per_element) <= 0:
-        raise ValueError("batch, token counts, and bytes per element must be positive")
+    if min(batch_size, prompt_tokens, bytes_per_element) <= 0 or generated_tokens < 0:
+        raise ValueError("batch, prompt and bytes must be positive; decode steps cannot be negative")
     for name, value in (("peak_flops_per_second", peak_flops_per_second),
                         ("memory_bandwidth_bytes_per_second", memory_bandwidth_bytes_per_second)):
         if value is not None and value <= 0:
@@ -89,17 +91,20 @@ def estimate(
                             shape.attention_heads, shape.effective_kv_heads,
                             shape.layers)
     head_dim = shape.head_dimension
-    linear_flops_per_token_per_layer = 8 * d * d + 4 * d * f
+    kv_width = kvh * head_dim
+    linear_flops_per_token_per_layer = 4 * d * d + 4 * d * kv_width + 4 * d * f
     output_projection_flops_per_token = 2 * d * shape.vocabulary_size
-    prefill_flops = batch_size * layers * (
-        prompt_tokens * (linear_flops_per_token_per_layer + output_projection_flops_per_token)
-        + 4 * prompt_tokens * prompt_tokens * d
+    prefill_flops = batch_size * (
+        layers * (prompt_tokens * linear_flops_per_token_per_layer
+                  + 4 * prompt_tokens * prompt_tokens * d)
+        + prompt_tokens * output_projection_flops_per_token
     )
     # Sum attention work as the cache grows token by token. This excludes the
     # small one-token causal-mask and sampling costs.
-    decode_flops = batch_size * layers * sum(
-        linear_flops_per_token_per_layer + output_projection_flops_per_token
-        + 4 * (prompt_tokens + step) * d
+    decode_flops = batch_size * sum(
+        layers * (linear_flops_per_token_per_layer
+                  + 4 * (prompt_tokens + step + 1) * d)
+        + output_projection_flops_per_token
         for step in range(generated_tokens)
     )
     parameter_count = shape.parameter_count

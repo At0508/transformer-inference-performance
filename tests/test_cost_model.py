@@ -4,6 +4,18 @@ from inference_lab.cost_model import ModelShape, estimate
 
 
 class CostModelTests(unittest.TestCase):
+    def test_flops_count_output_projection_once_and_new_decode_token(self):
+        shape = ModelShape(layers=2, hidden_size=16, attention_heads=4,
+                           feed_forward_size=32, vocabulary_size=64)
+        result = estimate(shape, batch_size=1, prompt_tokens=4, generated_tokens=2)
+        # Per layer: Q/K/V/O and MLP use 4,096 FLOPs per position.
+        # A single final vocabulary projection uses 2,048 FLOPs per position.
+        self.assertEqual(result.prefill_flops, 43008)
+        self.assertEqual(result.decode_flops, 21888)
+        no_decode = estimate(shape, batch_size=1, prompt_tokens=4, generated_tokens=0)
+        self.assertEqual(no_decode.decode_flops, 0)
+        self.assertEqual(no_decode.kv_cache_bytes_at_end, 2 * 2 * 4 * 16 * 2)
+
     def test_kv_cache_formula_and_scaling(self):
         shape = ModelShape(layers=2, hidden_size=32, attention_heads=4,
                            feed_forward_size=64, vocabulary_size=128)
