@@ -29,6 +29,16 @@ def _sync(device: torch.device) -> None:
         torch.cuda.synchronize(device)
 
 
+def _cpu_name() -> str:
+    try:
+        for line in Path('/proc/cpuinfo').read_text().splitlines():
+            if line.startswith('model name'):
+                return line.split(':', 1)[1].strip()
+    except OSError:
+        pass
+    return platform.processor() or platform.machine()
+
+
 def _measure(function, repetitions: int, device: torch.device) -> tuple[float, list[float]]:
     samples = []
     for _ in range(repetitions):
@@ -193,8 +203,9 @@ def main() -> None:
         "software": {"python": platform.python_version(), "torch": torch.__version__,
                      "cuda_runtime": torch.version.cuda},
         "hardware": {"device": str(device), "device_name": torch.cuda.get_device_name(device)
-                     if device.type == "cuda" else platform.processor(),
-                     "dtype": args.dtype, "torch_threads": torch.get_num_threads()},
+                     if device.type == "cuda" else _cpu_name(),
+                     "dtype": args.dtype, "torch_threads": torch.get_num_threads(),
+                     "os": platform.platform()},
         "model": asdict(ModelShape(layers=args.layers, hidden_size=args.hidden_size,
                                   attention_heads=args.heads,
                                   feed_forward_size=args.feed_forward_size,
