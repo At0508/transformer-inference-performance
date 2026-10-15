@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+build/
+results/*.json
+!results/.gitkeep
+.pytest_cache/
