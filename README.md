@@ -59,7 +59,9 @@ Run its checks with:
 python -m unittest discover -s tests -v
 ```
 
-The optional roofline estimate is a lower bound under simplified assumptions. It omits launch overhead, cache residency, allocator padding, scheduling, and framework kernels. The analytical API's `generated_tokens` counts decode forwards following prefill; the benchmark passes `output_tokens - 1`. The vocabulary projection is counted once after the decoder stack. Grouped-query attention dimensions are supported by the analytical model; the runnable PyTorch model uses standard multi-head attention. Compare estimates against observations; do not describe an estimate itself as measured latency.
+The optional roofline calculation gives idealized scenario times using compute rate and a full-weight streaming assumption. Cache residency and sparse position-table reads can reduce actual traffic; framework/launch overhead can increase time. These estimates therefore need calibration and are not guaranteed latency bounds. The analytical API's `generated_tokens` counts decode forwards following prefill; the benchmark passes `output_tokens - 1`. The vocabulary projection is counted once after the decoder stack. Grouped-query attention dimensions are supported by the analytical model; the runnable PyTorch model uses standard multi-head attention. Compare estimates against observations; do not describe an estimate itself as measured latency.
+
+CUDA peak allocated/reserved memory, when available, covers the entire case: correctness checks, warmups and both measurement modes. It is not an isolated measurement of cached-mode memory savings. KV-cache payload estimates are reported separately.
 
 ## Validation and limits
 

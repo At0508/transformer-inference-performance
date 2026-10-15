@@ -74,7 +74,7 @@ def estimate(
     peak_flops_per_second: float | None = None,
     memory_bandwidth_bytes_per_second: float | None = None,
 ) -> Estimate:
-    """Estimate FLOPs and KV payload; optional roofline times are lower bounds.
+    """Estimate FLOPs and KV payload, with optional idealized scenario times.
 
     The model assumes dense projections, standard attention, tied input/output
     embeddings, and a KV cache. It excludes framework, allocator, padding,
@@ -124,8 +124,10 @@ def estimate(
         ideal_prefill_ms = 1000.0 * prefill_flops / peak_flops_per_second
         ideal_decode_ms = 1000.0 * decode_flops / peak_flops_per_second
     if memory_bandwidth_bytes_per_second:
-        # A deliberately simple lower-bound estimate: prefill reads model
-        # weights once, while each generated token may reread the weights.
+        # A full-weight streaming scenario: prefill reads stored weights once,
+        # while each decode step rereads them. Cache residency and sparse
+        # position-table reads can reduce traffic, so this is not a guaranteed
+        # lower bound on observed latency.
         prefill_memory_ms = 1000.0 * weight_bytes / memory_bandwidth_bytes_per_second
         decode_memory_ms = 1000.0 * (
             generated_tokens * weight_bytes + decode_kv_read_bytes
