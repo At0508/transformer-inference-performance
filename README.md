@@ -69,6 +69,15 @@ The checks compare cached and full-prefix logits across several decode steps and
 
 ## Recorded CPU results
 
+On an AMD EPYC 9V74 CPU with one PyTorch thread and FP32, caching reduced decode time by 2.21–7.30× against full-prefix recomputation. Both modes use final-token-only vocabulary projection. Every tested greedy output matched; each case used three warmups and nine timed repetitions.
+
+| Batch | Prompt tokens | Cached decode speedup | Generated outputs |
+|---:|---:|---:|---|
+| 1 | 32 | 2.21× | Match |
+| 1 | 128 | 5.36× | Match |
+| 2 | 32 | 2.59× | Match |
+| 2 | 128 | 7.30× | Match |
+
 Recorded CPU measurements and all comparison cases are in the [inference results report](docs/results/cpu_inference_2026-10-15.md), with [raw timing samples and host metadata](docs/results/cpu_inference_2026-10-15.json). The benchmark compares KV caching with full-prefix recomputation using the same weights, input and final-token projection; every tested greedy output matched. These are CPU measurements of the small untrained model. GPU measurements remain to be collected.
 
 ## License
