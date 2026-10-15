@@ -65,6 +65,10 @@ The optional roofline estimate is a lower bound under simplified assumptions. It
 
 The checks compare cached and full-prefix logits across several decode steps and two sequences, verify tied parameter counts against PyTorch, and check batch throughput accounting. Cost-model checks validate hand-calculated FLOPs, KV scaling and input handling. GitHub Actions runs CPU PyTorch tests and publishes a CPU benchmark artifact. Run on an NVIDIA GPU before making GPU performance claims. No production-model accuracy or GPU timing is included in the source repository.
 
+## Recorded CPU results
+
+Recorded CPU measurements and all comparison cases are in the [inference results report](docs/results/cpu_inference_2026-10-15.md), with [raw timing samples and host metadata](docs/results/cpu_inference_2026-10-15.json). The benchmark compares KV caching with full-prefix recomputation using the same weights, input and final-token projection; every tested greedy output matched. These are CPU measurements of the small untrained model. GPU measurements remain to be collected.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
